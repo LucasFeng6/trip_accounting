@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>出游记账 - 记账面板</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="main.js"></script>
+  <script type="text/babel">
+    const Page = () => {
+      // 检查登录态
+      const userJson = sessionStorage.getItem('user');
+      const projectName = sessionStorage.getItem('projectName');
+      const initialParticipantsJson = sessionStorage.getItem('initialParticipants');
+      
+      if (!userJson) {
+        window.location.href = 'index.html';
+        return null;
+      }
+      if (!projectName) {
+        window.location.href = 'project.html';
+        return null;
+      }
+
+      const currentUser = JSON.parse(userJson);
+      const initialParticipants = initialParticipantsJson ? JSON.parse(initialParticipantsJson) : [];
+
+      const handleExitProject = () => {
+        sessionStorage.removeItem('projectName');
+        sessionStorage.removeItem('initialParticipants');
+        window.location.href = 'project.html';
+      };
+
+      const handleLogout = () => {
+        sessionStorage.clear();
+        window.location.href = 'index.html';
+      };
+      
+      return (
+        <Dashboard 
+          currentUser={currentUser} 
+          projectName={projectName} 
+          initialParticipants={initialParticipants}
+          onExitProject={handleExitProject}
+          onLogout={handleLogout} 
+        />
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<Page />);
+  </script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>出游记账 - 用户选择</title>
+  <title>出游记账 - 选择项目</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -19,13 +19,27 @@
   <script type="text/babel" src="main.js"></script>
   <script type="text/babel">
     const Page = () => {
-      const handleUserSelected = (user) => {
-        // 保存用户到 sessionStorage 并跳转
-        sessionStorage.setItem('user', JSON.stringify(user));
-        window.location.href = 'project.html';
+      // 检查是否选了用户
+      const userJson = sessionStorage.getItem('user');
+      if (!userJson) {
+        window.location.href = 'index.html';
+        return null;
+      }
+      const currentUser = JSON.parse(userJson);
+
+      const handleProjectSelected = (projectName, participants = []) => {
+        sessionStorage.setItem('projectName', projectName);
+        // 如果新建项目时选了人，存起来传给 Dashboard
+        sessionStorage.setItem('initialParticipants', JSON.stringify(participants));
+        window.location.href = 'dashboard.html';
+      };
+
+      const handleBack = () => {
+        sessionStorage.removeItem('user');
+        window.location.href = 'index.html';
       };
       
-      return <UserSelection onUserSelected={handleUserSelected} />;
+      return <ProjectSelection currentUser={currentUser} onProjectSelected={handleProjectSelected} onBack={handleBack} />;
     };
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
