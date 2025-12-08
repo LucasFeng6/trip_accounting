@@ -261,6 +261,13 @@ const ProjectSelection = ({ currentUser, onProjectSelected, onBack }) => {
 };
 
 // 4. 组件：主控台 Dashboard
+const getTodayDateString = () => {
+  const d = new Date();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+};
+
 const Dashboard = ({ currentUser, projectName, initialParticipants = [], onExitProject, onLogout }) => {
   const [activeTab, setActiveTab] = useState('add');
   const [users, setUsers] = useState([]);
@@ -270,22 +277,28 @@ const Dashboard = ({ currentUser, projectName, initialParticipants = [], onExitP
   // 新增账单状态
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(getTodayDateString());
   const [payerId, setPayerId] = useState(currentUser ? currentUser.id : undefined);
   const [selectedParticipants, setSelectedParticipants] = useState(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => { 
-    if(initialParticipants.length > 0) {
-        setSelectedParticipants(new Set(initialParticipants));
-    } else if (currentUser) {
-        setSelectedParticipants(new Set([currentUser.id]));
-    }
-  }, [initialParticipants, currentUser]);
-
   useEffect(() => { loadUsers(); loadExpenses(); }, [projectName]);
 
-  const loadUsers = async () => { try { setUsers(await api.getUsers()); } catch (e) { console.error(e); } };
+  const loadUsers = async () => {
+    try {
+      const data = await api.getUsers();
+      setUsers(data);
+      setSelectedParticipants(prev => {
+        if (prev.size > 0) return prev;
+        if (initialParticipants && initialParticipants.length > 0) {
+          return new Set(initialParticipants);
+        }
+        return new Set(data.map(u => u.id));
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
   const loadExpenses = async () => { try { setExpenses(await api.getExpenses(projectName)); } catch (e) { console.error(e); } };
   const getUserName = (id) => {
     const user = users.find(u => u.id === id);
@@ -304,7 +317,7 @@ const Dashboard = ({ currentUser, projectName, initialParticipants = [], onExitP
         participant_ids: Array.from(selectedParticipants),
         spent_at: date || null
       });
-      setTitle(''); setAmount(''); setDate('');
+      setTitle(''); setAmount(''); setDate(getTodayDateString());
       await loadExpenses();
       setActiveTab('list');
     } catch (e) { alert('保存失败'); } finally { setIsSubmitting(false); }

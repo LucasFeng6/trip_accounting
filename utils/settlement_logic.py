@@ -10,7 +10,6 @@ def compute_settlement(
     """
     对给定项目的一组账目进行结算：
     - 每一笔消费只在「实际参与该笔消费的人」之间均摊；
-    - 默认认为付款人本身也是参与者（即使前端没勾选，也会自动算进去）；
     - paid_total: 每人实际支付总额；
     - share_total: 每人应该分摊的总额；
     - balance = paid_total - share_total，正数表示该收，负数表示该付。
@@ -69,11 +68,22 @@ def compute_settlement(
         )
 
     # 4) 生成转账建议（简单贪心）
-    receivers = [b for b in balances if b.balance > 0]
-    payers = [b for b in balances if b.balance < 0]
+    # 注意：不能直接修改 balances 里的 balance，否则前端看到的余额会被“抹平”为 0
+    # 这里使用独立的临时结构保存剩余应收/应付金额
+    receivers = [
+        {"user_name": b.user_name, "remaining": b.balance}
+        for b in balances
+        if b.balance > 0
+    ]
+    payers = [
+        {"user_name": b.user_name, "remaining": -b.balance}
+        for b in balances
+        if b.balance < 0
+    ]
 
-    receivers.sort(key=lambda x: x.balance, reverse=True)
-    payers.sort(key=lambda x: x.balance)  # 最负在前
+    # 收款方：按应收金额从大到小排；付款方：按应付金额从大到小排
+    receivers.sort(key=lambda x: x["remaining"], reverse=True)
+    payers.sort(key=lambda x: x["remaining"], reverse=True)
 
     transfers: List[Transfer] = []
 
@@ -81,24 +91,24 @@ def compute_settlement(
     while i < len(payers) and j < len(receivers):
         payer = payers[i]
         recv = receivers[j]
-        need = recv.balance
-        owe = -payer.balance
+        need = recv["remaining"]
+        owe = payer["remaining"]
         amt = round(min(need, owe), 2)
 
         if amt > 0:
             transfers.append(
                 Transfer(
-                    from_user=payer.user_name,
-                    to_user=recv.user_name,
+                    from_user=payer["user_name"],
+                    to_user=recv["user_name"],
                     amount=amt,
                 )
             )
-            payer.balance += amt
-            recv.balance -= amt
+            payer["remaining"] -= amt
+            recv["remaining"] -= amt
 
-        if abs(payer.balance) < 1e-6:
+        if payer["remaining"] < 1e-6:
             i += 1
-        if recv.balance < 1e-6:
+        if recv["remaining"] < 1e-6:
             j += 1
 
     return SettlementResult(
